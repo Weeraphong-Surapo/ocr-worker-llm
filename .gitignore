@@ -1,0 +1,19 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+!.env.coolify.example
+
+# Dependencies and generated files
+node_modules/
+dist/
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+*.log

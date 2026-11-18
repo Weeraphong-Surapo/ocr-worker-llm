@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: thaiocr
+      POSTGRES_PASSWORD: thaiocr
+      POSTGRES_DB: thaiocr
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - thai-ocr-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thaiocr -d thaiocr"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6390:6379"
+    volumes:
+      - thai-ocr-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  ocr-stub:
+    image: python:3.11-slim
+    command: ["python", "/app/server.py"]
+    volumes:
+      - ./e2e/ocr-stub/server.py:/app/server.py:ro
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      PORT: 3000
+      OCR_ENGINE_URL: http://ocr-stub:8000
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://thaiocr:thaiocr@postgres:5432/thaiocr
+      MAX_UPLOAD_MB: 20
+      MAX_PDF_PAGES: 50
+    ports:
+      - "127.0.0.1:3300:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ocr-stub:
+        condition: service_healthy
+
+volumes:
+  thai-ocr-postgres:
+  thai-ocr-redis:
